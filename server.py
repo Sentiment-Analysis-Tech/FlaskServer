@@ -12,7 +12,7 @@ CORS(app)
 
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Set max request size to 16MB
 
-# Function to suppress TensorFlow logs
+
 def suppress_tf_logs():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logs
     tf.get_logger().setLevel('ERROR')
@@ -60,6 +60,9 @@ def predict():
 
         text = data['text']
         processed_text = preprocess_text(text)
+
+        print(text)
+
 
         sequences = tokenizer.texts_to_sequences([processed_text])
         padded_sequences = pad_sequences(sequences, maxlen=100)

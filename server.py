@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -7,6 +8,8 @@ import re
 import pickle
 
 app = Flask(__name__)
+CORS(app)
+
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Set max request size to 16MB
 
 # Function to suppress TensorFlow logs
@@ -25,20 +28,31 @@ def preprocess_text(text):
     text = re.sub(r'[^a-z0-9\s]', '', text)
     return text
 
-# Load the model
+# Load the model and tokenizer
 model_path = 'sentiment_analysis_model.h5'
+tokenizer_path = 'tokenizer_turkish.pickle'
+model = None
+tokenizer = None
+
 try:
     model = load_model(model_path)
     print("Model loaded successfully.")
 except Exception as e:
     print(f"Error loading model: {e}")
 
-# Load the pre-fitted tokenizer
-with open('tokenizer_turkish.pickle', 'rb') as handle:
-    tokenizer = pickle.load(handle)
+try:
+    with open(tokenizer_path, 'rb') as handle:
+        tokenizer = pickle.load(handle)
+    print("Tokenizer loaded successfully.")
+except Exception as e:
+    print(f"Error loading tokenizer: {e}")
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    global model, tokenizer
+    if model is None or tokenizer is None:
+        return jsonify({'error': 'Model or tokenizer not loaded'}), 500
+
     try:
         data = request.json
         if 'text' not in data:

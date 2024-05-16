@@ -1,3 +1,4 @@
+# server.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import tensorflow as tf
@@ -11,7 +12,6 @@ app = Flask(__name__)
 CORS(app)
 
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Set max request size to 16MB
-
 
 def suppress_tf_logs():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logs
@@ -63,7 +63,6 @@ def predict():
 
         print(text)
 
-
         sequences = tokenizer.texts_to_sequences([processed_text])
         padded_sequences = pad_sequences(sequences, maxlen=100)
 
@@ -77,4 +76,4 @@ def predict():
         return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000)  # For local development

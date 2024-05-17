@@ -34,6 +34,7 @@ tokenizer_path = '/home/site/wwwroot/tokenizer_turkish.pickle'
 model = None
 tokenizer = None
 
+
 try:
     model = load_model(model_path)
     print("Model loaded successfully.")

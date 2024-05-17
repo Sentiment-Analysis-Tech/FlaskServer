@@ -29,8 +29,8 @@ def preprocess_text(text):
     return text
 
 # Load the model and tokenizer
-model_path = 'sentiment_analysis_model.h5'
-tokenizer_path = 'tokenizer_turkish.pickle'
+model_path = '/home/site/wwwroot/sentiment_analysis_model.h5'
+tokenizer_path = '/home/site/wwwroot/tokenizer_turkish.pickle'
 model = None
 tokenizer = None
 
@@ -76,4 +76,4 @@ def predict():
         return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)  # For local development
+    app.run(host='0.0.0.0', port=8000)  # For Azure App Service

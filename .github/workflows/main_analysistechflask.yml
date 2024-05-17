@@ -2,7 +2,7 @@
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 # More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
 
-name: Build and deploy Python app to Azure Web App - AnalysisTechFlask
+name: Build and deploy Python app to Azure Web App - analysistechflask
 
 on:
   push:
@@ -20,17 +20,18 @@ jobs:
       - name: Set up Python version
         uses: actions/setup-python@v1
         with:
-          python-version: '3.8'
+          python-version: '3.11'
 
       - name: Create and start virtual environment
         run: |
           python -m venv venv
           source venv/bin/activate
-
+      
       - name: Install dependencies
         run: pip install -r requirements.txt
-
+        
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+
       - name: Zip artifact for deployment
         run: zip release.zip ./* -r
 
@@ -48,6 +49,8 @@ jobs:
     environment:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    permissions:
+      id-token: write #This is required for requesting the JWT
 
     steps:
       - name: Download artifact from build job
@@ -58,10 +61,18 @@ jobs:
       - name: Unzip artifact for deployment
         run: unzip release.zip
 
+      
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_14E17A09962040B78BB6CA31B3F5A83A }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_17C64897360A493FBAC1502099F7DF85 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_CE05C14242314B04A296BCB9792A11C9 }}
+
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v2
         id: deploy-to-webapp
         with:
-          app-name: 'AnalysisTechFlask'
+          app-name: 'analysistechflask'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_4456F4C4AFCC494196D16116888FB4AE }}
+          

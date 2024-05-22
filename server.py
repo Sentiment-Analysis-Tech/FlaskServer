@@ -1,4 +1,3 @@
-# server.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import tensorflow as tf
@@ -22,6 +21,17 @@ def suppress_tf_logs():
 
 suppress_tf_logs()
 
+# Set TensorFlow threading and memory growth configuration
+tf.config.threading.set_intra_op_parallelism_threads(2)
+tf.config.threading.set_inter_op_parallelism_threads(2)
+
+physical_devices = tf.config.list_physical_devices('CPU')
+try:
+    for device in physical_devices:
+        tf.config.experimental.set_memory_growth(device, True)
+except Exception as e:
+    print(f"Error setting memory growth: {e}")
+
 # Preprocess text
 def preprocess_text(text):
     text = text.lower()
@@ -33,7 +43,6 @@ model_path = '/home/site/wwwroot/sentiment_analysis_model.h5'
 tokenizer_path = '/home/site/wwwroot/tokenizer_turkish.pickle'
 model = None
 tokenizer = None
-
 
 try:
     model = load_model(model_path)
@@ -61,8 +70,6 @@ def predict():
 
         text = data['text']
         processed_text = preprocess_text(text)
-
-        print(text)
 
         sequences = tokenizer.texts_to_sequences([processed_text])
         padded_sequences = pad_sequences(sequences, maxlen=100)

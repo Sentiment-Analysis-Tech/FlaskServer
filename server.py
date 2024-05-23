@@ -28,7 +28,7 @@ def preprocess_text(text):
     return text
 
 # Load the model and tokenizer
-model_path = '/home/site/wwwroot/sentiment_analysis_model.h5'
+model_path = '/home/site/wwwroot/GRU_sentiment_model.h5'
 tokenizer_path = '/home/site/wwwroot/tokenizer_turkish.pickle'
 model = None
 tokenizer = None

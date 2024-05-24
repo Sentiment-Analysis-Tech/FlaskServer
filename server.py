@@ -4,7 +4,6 @@ import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import os
-import re
 import pickle
 
 app = Flask(__name__)
@@ -21,18 +20,11 @@ def suppress_tf_logs():
 
 suppress_tf_logs()
 
-# Preprocess text
-def preprocess_text(text):
-    text = text.lower()
-    text = re.sub(r'[^a-z0-9\s]', '', text)
-    return text
-
 # Load the model and tokenizer
-model_path = '/home/site/wwwroot/GRU_sentiment_model.h5'
-tokenizer_path = '/home/site/wwwroot/tokenizer_turkish.pickle'
+model_path = 'GRU_sentiment_model.h5'
+tokenizer_path = 'tokenizer_turkish.pickle'
 model = None
 tokenizer = None
-
 
 try:
     model = load_model(model_path)
@@ -47,6 +39,16 @@ try:
 except Exception as e:
     print(f"Error loading tokenizer: {e}")
 
+def predict_sentiment(text, tokenizer, model, max_tokens=64):
+    # Tokenize the input text
+    tokens = tokenizer.texts_to_sequences([text])
+    # Pad the sequences
+    tokens_pad = pad_sequences(tokens, maxlen=max_tokens)
+    # Make a prediction
+    prediction = model.predict(tokens_pad)
+    # Return the raw prediction value
+    return prediction[0][0]
+
 @app.route('/predict', methods=['POST'])
 def predict():
     global model, tokenizer
@@ -59,21 +61,18 @@ def predict():
             return jsonify({'error': 'No text provided'}), 400
 
         text = data['text']
-        processed_text = preprocess_text(text)
 
-        print(text)
+        # Use the same predict_sentiment function as in your script
+        prediction_value = predict_sentiment(text, tokenizer, model)
+        sentiment = 'Positive' if prediction_value > 0.5 else 'Negative'
 
-        sequences = tokenizer.texts_to_sequences([processed_text])
-        padded_sequences = pad_sequences(sequences, maxlen=100)
-
-        # Make prediction
-        predictions = model.predict(padded_sequences)
-        prediction = float(predictions[0][0])
-
-        return jsonify({'prediction': prediction})
+        return jsonify({
+            'prediction': float(prediction_value),  # Convert to regular float for JSON serialization
+            'sentiment': sentiment
+        })
     except Exception as e:
         print(f"Error during prediction: {e}")
         return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)  # For Azure App Service
+    app.run(host='0.0.0.0', port=5000)  # For Azure App Service

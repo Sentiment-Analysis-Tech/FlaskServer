@@ -5,6 +5,14 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import os
 import pickle
+from collections import Counter
+import re
+import nltk
+from nltk.corpus import stopwords
+
+# Download the stopwords list if not already present
+nltk.download('stopwords')
+stop_words = set(stopwords.words('turkish') + stopwords.words('english'))
 
 app = Flask(__name__)
 CORS(app)
@@ -49,6 +57,21 @@ def predict_sentiment(text, tokenizer, model, max_tokens=64):
     # Return the raw prediction value
     return prediction[0][0]
 
+def get_most_frequent_word(comments):
+    # Combine all comments into one text
+    combined_text = ' '.join(comments)
+    # Remove punctuation and convert to lowercase
+    words = re.findall(r'\b\w+\b', combined_text.lower())
+    # Remove stop words
+    filtered_words = [word for word in words if word not in stop_words]
+    # Count the occurrences of each word
+    counter = Counter(filtered_words)
+    # Get the most common word
+    if counter:
+        most_common_word, _ = counter.most_common(1)[0]
+        return most_common_word
+    return None
+
 @app.route('/predict', methods=['POST'])
 def predict():
     global model, tokenizer
@@ -57,18 +80,21 @@ def predict():
 
     try:
         data = request.json
-        if 'text' not in data:
-            return jsonify({'error': 'No text provided'}), 400
+        if 'comments' not in data:
+            return jsonify({'error': 'No comments provided'}), 400
 
-        text = data['text']
+        comments = data['comments']
+        predictions = []
 
-        # Use the same predict_sentiment function as in your script
-        prediction_value = predict_sentiment(text, tokenizer, model)
-        sentiment = 'Positive' if prediction_value > 0.5 else 'Negative'
+        for comment in comments:
+            prediction_value = predict_sentiment(comment, tokenizer, model)
+            predictions.append(float(prediction_value))  # Convert to regular float for JSON serialization
+
+        most_frequent_word = get_most_frequent_word(comments)
 
         return jsonify({
-            'prediction': float(prediction_value),  # Convert to regular float for JSON serialization
-            'sentiment': sentiment
+            'predictions': predictions,
+            'most_frequent_word': most_frequent_word
         })
     except Exception as e:
         print(f"Error during prediction: {e}")

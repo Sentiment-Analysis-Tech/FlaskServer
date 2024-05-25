@@ -10,17 +10,17 @@ import re
 import nltk
 from nltk.corpus import stopwords
 
-# Download the stopwords list if not already present
+# Stopwords'i indir ve ayarla
 nltk.download('stopwords')
 stop_words = set(stopwords.words('turkish') + stopwords.words('english'))
 
 app = Flask(__name__)
 CORS(app)
 
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Set max request size to 16MB
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Maksimum istek boyutunu 16MB olarak ayarla
 
 def suppress_tf_logs():
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logs
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # TensorFlow loglarını bastır
     tf.get_logger().setLevel('ERROR')
     tf.autograph.set_verbosity(3)
     import logging
@@ -28,7 +28,7 @@ def suppress_tf_logs():
 
 suppress_tf_logs()
 
-# Load the model and tokenizer
+# Model ve tokenizer'ı yükle
 model_path = 'GRU_sentiment_model.h5'
 tokenizer_path = 'tokenizer_turkish.pickle'
 model = None
@@ -36,37 +36,37 @@ tokenizer = None
 
 try:
     model = load_model(model_path)
-    print("Model loaded successfully.")
+    print("Model başarıyla yüklendi.")
 except Exception as e:
-    print(f"Error loading model: {e}")
+    print(f"Model yüklenirken hata oluştu: {e}")
 
 try:
     with open(tokenizer_path, 'rb') as handle:
         tokenizer = pickle.load(handle)
-    print("Tokenizer loaded successfully.")
+    print("Tokenizer başarıyla yüklendi.")
 except Exception as e:
-    print(f"Error loading tokenizer: {e}")
+    print(f"Tokenizer yüklenirken hata oluştu: {e}")
 
-def predict_sentiment(text, tokenizer, model, max_tokens=64):
-    # Tokenize the input text
-    tokens = tokenizer.texts_to_sequences([text])
-    # Pad the sequences
+def predict_sentiment_batch(texts, tokenizer, model, max_tokens=64):
+    # Metinleri tokenize et
+    tokens = tokenizer.texts_to_sequences(texts)
+    # Sekansları doldur
     tokens_pad = pad_sequences(tokens, maxlen=max_tokens)
-    # Make a prediction
-    prediction = model.predict(tokens_pad)
-    # Return the raw prediction value
-    return prediction[0][0]
+    # Tahmin yap
+    predictions = model.predict(tokens_pad)
+    # Ham tahmin değerlerini döndür ve float'a dönüştür
+    return [float(pred[0]) for pred in predictions]
 
 def get_most_frequent_word(comments):
-    # Combine all comments into one text
+    # Tüm yorumları bir metinde birleştir
     combined_text = ' '.join(comments)
-    # Remove punctuation and convert to lowercase
+    # Noktalama işaretlerini kaldır ve küçük harfe çevir
     words = re.findall(r'\b\w+\b', combined_text.lower())
-    # Remove stop words
+    # Stop words'leri çıkar
     filtered_words = [word for word in words if word not in stop_words]
-    # Count the occurrences of each word
+    # Kelime frekanslarını say
     counter = Counter(filtered_words)
-    # Get the most common word
+    # En yaygın kelimeyi al
     if counter:
         most_common_word, _ = counter.most_common(1)[0]
         return most_common_word
@@ -76,29 +76,32 @@ def get_most_frequent_word(comments):
 def predict():
     global model, tokenizer
     if model is None or tokenizer is None:
-        return jsonify({'error': 'Model or tokenizer not loaded'}), 500
+        return jsonify({'error': 'Model veya tokenizer yüklenmedi'}), 500
 
     try:
         data = request.json
         if 'comments' not in data:
-            return jsonify({'error': 'No comments provided'}), 400
+            return jsonify({'error': 'Yorumlar sağlanmadı'}), 400
 
         comments = data['comments']
-        predictions = []
+        predictions = predict_sentiment_batch(comments, tokenizer, model)
 
-        for comment in comments:
-            prediction_value = predict_sentiment(comment, tokenizer, model)
-            predictions.append(float(prediction_value))  # Convert to regular float for JSON serialization
+        # Ortalama tahmini hesapla
+        if predictions:
+            average_prediction = sum(predictions) / len(predictions)
+        else:
+            average_prediction = 0
 
         most_frequent_word = get_most_frequent_word(comments)
 
         return jsonify({
             'predictions': predictions,
+            'average_prediction': average_prediction,
             'most_frequent_word': most_frequent_word
         })
     except Exception as e:
-        print(f"Error during prediction: {e}")
-        return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+        print(f"Tahmin sırasında hata oluştu: {e}")
+        return jsonify({'error': 'Dahili Sunucu Hatası', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)  # For Azure App Service
+    app.run(host='0.0.0.0', port=5000)  # Azure App Service için
